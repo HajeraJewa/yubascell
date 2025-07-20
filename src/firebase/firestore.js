@@ -7,8 +7,9 @@ import {
   setDoc,
   getDoc,
   updateDoc,
-  arrayUnion,
   deleteDoc,
+  query,
+  where, 
 } from "firebase/firestore";
 import app from "./firebaseConfig";
 
@@ -25,88 +26,95 @@ export const addProduct = async (product) => {
   return await addDoc(collection(db, "products"), product);
 };
 
-// 🛒 Tambah item ke cart user
+// 📝 Ambil semua pesanan user
+export const fetchOrders = async (userId) => {
+  const ordersRef = collection(db, "orders");
+  const q = query(ordersRef, where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
+};
+
+// 🛒 Tambah ke cart
 export const addToCart = async (userId, product) => {
   const cartRef = doc(db, "carts", userId);
   const cartSnap = await getDoc(cartRef);
 
+  let cartItems = [];
   if (cartSnap.exists()) {
-    const cartData = cartSnap.data();
-    const existingItem = cartData.items.find((item) => item.id === product.id);
-
-    if (existingItem) {
-      existingItem.qty += product.qty;
-    } else {
-      cartData.items.push(product);
-    }
-
-    await updateDoc(cartRef, { items: cartData.items });
-  } else {
-    await setDoc(cartRef, { items: [product] });
+    cartItems = cartSnap.data().items || [];
   }
+
+  const index = cartItems.findIndex((item) => item.id === product.id);
+
+  if (index >= 0) {
+    cartItems[index].qty += 1; // Tambah qty jika sudah ada
+  } else {
+    cartItems.push({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      qty: 1,
+    });
+  }
+
+  await setDoc(cartRef, { items: cartItems }, { merge: true });
 };
 
-// 🛒 Fetch cart user
+// 🛒 Ambil cart
 export const fetchCart = async (userId) => {
   const cartRef = doc(db, "carts", userId);
   const cartSnap = await getDoc(cartRef);
   if (cartSnap.exists()) {
-    return cartSnap.data().items;
-  } else {
-    return [];
+    return cartSnap.data().items || [];
   }
+  return [];
 };
 
-// 🛒 Update qty produk dalam cart
+// 🛒 Update qty item di cart
 export const updateCartItem = async (userId, productId, qty) => {
   const cartRef = doc(db, "carts", userId);
   const cartSnap = await getDoc(cartRef);
 
-  let cart = {};
   if (cartSnap.exists()) {
-    cart = cartSnap.data();
-  }
+    let cartItems = cartSnap.data().items || [];
+    const index = cartItems.findIndex((item) => item.id === productId);
 
-  if (cart[productId]) {
-    cart[productId].qty += qty;
-  } else {
-    cart[productId] = { qty, productId };
+    if (index >= 0) {
+      if (qty > 0) {
+        cartItems[index].qty = qty;
+      } else {
+        cartItems.splice(index, 1); // Hapus kalau qty 0
+      }
+      await setDoc(cartRef, { items: cartItems }, { merge: true });
+    }
   }
-
-  await setDoc(cartRef, cart, { merge: true }); // ✅ merge data lama
 };
 
-// 🛒 Hapus produk dari cart
+// 🛒 Hapus item
 export const removeCartItem = async (userId, productId) => {
   const cartRef = doc(db, "carts", userId);
   const cartSnap = await getDoc(cartRef);
 
   if (cartSnap.exists()) {
-    const cartData = cartSnap.data();
-    const filteredItems = cartData.items.filter(
-      (item) => item.id !== productId
-    );
-    await updateDoc(cartRef, { items: filteredItems });
+    const filteredItems = cartSnap
+      .data()
+      .items.filter((item) => item.id !== productId);
+    await setDoc(cartRef, { items: filteredItems }, { merge: true });
   }
 };
 
-// ✅ Simpan order baru
+// ✅ Checkout
 export const placeOrder = async (order) => {
   return await addDoc(collection(db, "orders"), order);
 };
 
-// ✅ Kosongkan cart setelah checkout
+// ✅ Kosongkan cart
 export const clearCart = async (userId) => {
   await deleteDoc(doc(db, "carts", userId));
-};
-
-// Ambil semua pesanan user
-export const fetchOrders = async (userId) => {
-  const ordersRef = collection(db, "orders");
-  const querySnapshot = await getDocs(ordersRef);
-  return querySnapshot.docs
-    .filter((doc) => doc.data().userId === userId)
-    .map((doc) => ({ id: doc.id, ...doc.data() }));
 };
 
 export default db;
