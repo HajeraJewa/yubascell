@@ -52,3 +52,13 @@ AI (IBM Granite) digunakan sebagai asisten dalam:
 ```bash
 git clone https://github.com/hajerajewa/yubascell.git
 cd yubascell
+
+2. Install dependencies
+npm install
+
+3. Jalankan lokal server
+npm run dev
+
+4. Deploy ke Vercel atau Netlify
+
+
