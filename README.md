@@ -12,6 +12,7 @@ Yubascell memungkinkan pengguna:
 - Admin dapat menambah produk baru
 
 AI (IBM Granite) digunakan sebagai asisten dalam:
+
 ✅ Generasi kode awal komponen  
 ✅ Optimasi logika pada React Hooks & Firebase  
 ✅ Membantu dokumentasi kode
